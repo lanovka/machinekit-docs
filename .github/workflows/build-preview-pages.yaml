@@ -16,10 +16,16 @@ jobs:
     runs-on: ubuntu-latest
     env:
       ACTING_SHA: ${{ github.sha }}
-      POSITION_FROM_TOP: 1
+      POSITION_FROM_TOP: '1'
       OUTPUT_NAME: 'machinekit-site-${{ github.sha }}'
       ACTING_REPOSITORY: ${{ github.repository }}
     steps:
+      # Hack uptil conditional setting of environment variable is posible 
+      # (or this is reworked into an action)
+      - name: Test for pull request or push
+        if: github.event_name == 'push'
+        run: echo ::set-env name=POSITION_FROM_TOP::1
+
       # Locally clone the repository which we want to build with depth of 5 commits
       - name: Checkout the pull request for Machinekit-docs
         uses: actions/checkout@v2
@@ -33,7 +39,13 @@ jobs:
         run: echo ${{ env.ACTING_SHA }}
 
       - name: Git log of repository on which the build is requested
-        run: git log
+        run: |
+          git log
+          echo "WHERE is HEAD"
+          git log HEAD
+          echo ""
+          echo "HEAD~1"
+          git log HEAD~1
         working-directory: ./to_build
 
       # Create directory for output files and export it's name as a environment variable
@@ -49,12 +61,13 @@ jobs:
       - name: Create JSON with commit metadata
         env: 
           FILENAME: '$OUTPUT_DIRECTORY/build-metadata.json'
+        shell: bash
         run: |
           echo "###########################################################"
           echo "# Commit which will be used for mining of the credentials #"
           echo "###########################################################"
-          git log -n 1 ${{ env.ACTING_SHA }}~$((${{ env.POSITION_FROM_TOP }}-1))
-          jq -n --arg authoremail "$(git log --format='%ae' -n 1 ${{ env.ACTING_SHA }}~$((${{ env.POSITION_FROM_TOP }}-1)))" --arg authorname "$(git log --format='%an' -n 1 ${{ env.ACTING_SHA }}~$((${{ env.POSITION_FROM_TOP }}-1)))" --arg commitmsg "$(git log --format='%B' -n 1 ${{ env.ACTING_SHA }}~$((${{ env.POSITION_FROM_TOP }}-1)))" --arg sha "${{ env.ACTING_SHA }}" '{"author":"\($authorname)","email":"\($authoremail)","message":"\($commitmsg)","sha":"\($sha)"}' > ${{ env.FILENAME }}
+          git log -n 1 $(echo HEAD~${{ env.POSITION_FROM_TOP }})
+          jq -n --arg authoremail "$(git log --format='%ae' -n 1 $(echo HEAD~${{ env.POSITION_FROM_TOP }}))" --arg authorname "$(git log --format='%an' -n 1 $(echo HEAD~${{ env.POSITION_FROM_TOP }}))" --arg commitmsg "$(git log --format='%B' -n 1 $(echo HEAD~${{ env.POSITION_FROM_TOP }}))" --arg sha "${{ env.ACTING_SHA }}" '{"author":"\($authorname)","email":"\($authoremail)","message":"\($commitmsg)","sha":"\($sha)"}' > ${{ env.FILENAME }}
           echo "###########################################################"
           echo "# JSON file with metadata information of pertinent commit #"
           echo "###########################################################"          
