@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       ACTING_SHA: ${{ github.sha }}
-      POSITION_FROM_TOP: '1'
+      POSITION_FROM_TOP: '0'
       OUTPUT_NAME: 'machinekit-site-${{ github.sha }}'
       ACTING_REPOSITORY: ${{ github.repository }}
     steps:
